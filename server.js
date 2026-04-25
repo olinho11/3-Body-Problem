@@ -114,7 +114,9 @@ app.get('/load-preset', (req, res) => {
   res.json({ preset });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`App backend running on http://localhost:${PORT}`);
-});
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => console.log(`Running on http://localhost:${PORT}`));
+}
+
+module.exports = app;
