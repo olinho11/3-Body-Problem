@@ -5,6 +5,8 @@ This workspace contains:
 - `three-body-simulator.html` — the interactive simulator UI
 - `server.js` — a backend for persistence of saved presets and scenarios
 - `package.json` — backend dependencies
+## Website
+[https://3-body-problem.vercel.app](url)
 
 ## Setup
 
