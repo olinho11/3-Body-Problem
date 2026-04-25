@@ -4,6 +4,7 @@
     { "src": "server.js", "use": "@vercel/node" }
   ],
   "routes": [
+    { "src": "/", "dest": "/three-body-simulator.html" },
     { "src": "/(.*)", "dest": "server.js" }
   ]
 }
