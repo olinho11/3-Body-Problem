@@ -6,7 +6,7 @@ This workspace contains:
 - `server.js` — a backend for persistence of saved presets and scenarios
 - `package.json` — backend dependencies
 ## Website
-[https://3-body-problem.vercel.app](url)
+https://3-body-problem.vercel.app (copy and paste)
 
 ## Setup
 
