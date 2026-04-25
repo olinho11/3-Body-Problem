@@ -1,0 +1,2207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Three-Body Problem Simulator</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0d0d14;
+      color: #e6e9f2;
+      --panel: rgba(14, 17, 25, 0.94);
+      --panel-border: #23283e;
+      --accent: #7c92ff;
+      --accent-soft: rgba(124, 146, 255, 0.16);
+      --soft: #42495a;
+      --text-subtle: #9ca2c0;
+      --danger: #ff637d;
+      --success: #75f5a6;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: #0d0d14;
+      color: #e6e9f2;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    button, select, input {
+      font: inherit;
+      color: inherit;
+    }
+
+    #topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 10px;
+      align-items: center;
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      background: rgba(9, 11, 18, 0.96);
+      backdrop-filter: blur(10px);
+    }
+
+    .pill {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(18, 22, 34, 0.9);
+      border: 1px solid rgba(255,255,255,0.06);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
+      min-width: 170px;
+    }
+
+    .pill strong {
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    #main {
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    #viewer {
+      position: relative;
+      background: #090a11;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    #scene {
+      display: block;
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      cursor: grab;
+    }
+
+    #scene:active {
+      cursor: grabbing;
+    }
+
+    aside {
+      width: 280px;
+      padding: 16px;
+      overflow-y: auto;
+      background: linear-gradient(180deg, rgba(14, 17, 27, 0.96), rgba(10, 12, 18, 0.96));
+      border-left: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .section {
+      margin-bottom: 18px;
+      padding: 14px;
+      border: 1px solid var(--panel-border);
+      border-radius: 18px;
+      background: rgba(15, 18, 29, 0.94);
+    }
+
+    .section h2 {
+      margin: 0 0 12px;
+      font-size: 0.95rem;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: #96a0d5;
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button, .button-pill {
+      border: none;
+      outline: none;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(130, 145, 255, 0.12);
+      color: #e7ebff;
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+
+    button:hover, .button-pill:hover {
+      transform: translateY(-1px);
+      background: rgba(130, 145, 255, 0.2);
+    }
+
+    button.active {
+      background: rgba(124, 146, 255, 0.24);
+      box-shadow: 0 0 0 1px rgba(124,146,255,0.16);
+    }
+
+    .preset-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      font-size: 0.92rem;
+      color: #d3d7ef;
+      margin-top: 12px;
+    }
+
+    label span {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 0.82rem;
+      color: #94a0c4;
+    }
+
+    input[type=range] {
+      width: 100%;
+      accent-color: #7c92ff;
+    }
+
+    input[type=color] {
+      width: 100%;
+      height: 32px;
+      border: none;
+      border-radius: 10px;
+      padding: 0;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    input[type=checkbox] {
+      width: 16px;
+      height: 16px;
+      accent-color: #7c92ff;
+      cursor: pointer;
+    }
+
+    .small-pair {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .sub-section {
+      padding-top: 10px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .details {
+      margin-top: 8px;
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px;
+      background: rgba(255,255,255,0.02);
+      padding: 10px;
+    }
+
+    summary {
+      cursor: pointer;
+      list-style: none;
+      font-weight: 600;
+      color: #eef1ff;
+      padding: 8px 0;
+    }
+
+    summary::-webkit-details-marker {
+      display: none;
+    }
+
+    details[open] summary::after {
+      content: "▲";
+      float: right;
+      color: #7c92ff;
+    }
+
+    details summary::after {
+      content: "▼";
+      float: right;
+      color: #7c92ff;
+    }
+
+    .inset-panel {
+      position: absolute;
+      border-radius: 18px;
+      background: rgba(7, 9, 15, 0.8);
+      border: 1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(6px);
+      color: #d1d7e3;
+      padding: 10px;
+      font-size: 0.78rem;
+      line-height: 1.3;
+    }
+
+    .inset-map { right: 18px; top: 18px; width: 170px; }
+    .inset-phase { right: 18px; bottom: 18px; width: 170px; }
+    .inset-energy { left: 18px; bottom: 18px; width: 170px; }
+    .inset-chaos { left: 18px; top: 18px; width: 170px; }
+
+    .inset-panel canvas {
+      width: 100%;
+      height: 96px;
+      border-radius: 12px;
+      margin-top: 8px;
+      background: rgba(12,15,24,0.8);
+      display: block;
+    }
+
+    .inset-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      color: #b0b9d9;
+      font-size: 0.78rem;
+    }
+
+    #chaosBars {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin-top: 8px;
+      height: 72px;
+      align-items: end;
+    }
+
+    .chaos-bar {
+      width: 100%;
+      border-radius: 999px;
+      background: rgba(124,146,255,0.14);
+      height: 100%;
+      transition: height 0.14s ease;
+    }
+
+    #scene-cover {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .tiny-label {
+      font-size: 0.77rem;
+      letter-spacing: 0.05em;
+      color: #8d99c9;
+      margin-top: 4px;
+    }
+
+    .badge {
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 0.78rem;
+      background: rgba(255,255,255,0.06);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .warning-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 10px var(--success);
+      animation: pulse 1.8s infinite ease-in-out;
+    }
+
+    .warning-dot.alert {
+      background: var(--danger);
+      box-shadow: 0 0 15px rgba(255,99,125,0.9);
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 0.8; }
+      50% { transform: scale(1.2); opacity: 0.45; }
+    }
+
+    .help-text {
+      color: #7b84a5;
+      font-size: 0.82rem;
+      margin-top: 10px;
+      line-height: 1.4;
+    }
+
+    .premium-card {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(124,146,255,0.1);
+      border: 1px solid rgba(124,146,255,0.2);
+    }
+
+    .premium-price-row,
+    .premium-input-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .price-tag {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 10px 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.1);
+      min-width: 0;
+      flex: 1;
+    }
+
+    .price-main {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #f7fbff;
+    }
+
+    .price-sub {
+      font-size: 0.9rem;
+      color: #c4c9e6;
+    }
+
+    .savings-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: rgba(118, 214, 206, 0.12);
+      color: #a6f6e1;
+      font-weight: 700;
+      border: 1px solid rgba(118,214,206,0.18);
+      white-space: nowrap;
+    }
+
+    .premium-input-row input,
+    .premium-input-row select {
+      flex: 1;
+      min-width: 0;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.04);
+      color: #eef1ff;
+    }
+
+    .premium-card strong {
+      color: #ffffff;
+    }
+
+    .premium-card p {
+      margin: 0;
+      color: #d9e0ff;
+      line-height: 1.5;
+    }
+
+    .premium-card button {
+      width: 100%;
+      border-radius: 14px;
+      background: rgba(124,146,255,0.24);
+      color: #ffffff;
+      padding: 10px 14px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+
+
+    .premium-dev-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .premium-dev-row input {
+      flex: 1;
+      min-width: 0;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color: #eef1ff;
+    }
+
+    .premium-dev-row button {
+      flex: none;
+      padding: 10px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(124,146,255,0.24);
+      color: #eef1ff;
+      cursor: pointer;
+    }
+
+    .premium-status {
+      margin-top: 12px;
+      color: #c3cadf;
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+
+    .premium-tools {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .premium-tools button {
+      background: rgba(255,255,255,0.08);
+      color: #eef1ff;
+      border: 1px solid rgba(255,255,255,0.12);
+      padding: 10px 12px;
+      border-radius: 14px;
+      cursor: pointer;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .premium-modal {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(6, 7, 15, 0.95);
+      z-index: 30;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.24s ease;
+    }
+
+    .premium-modal.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .premium-panel {
+      width: min(520px, calc(100% - 48px));
+      padding: 28px;
+      border-radius: 24px;
+      background: rgba(10, 12, 20, 0.98);
+      border: 1px solid rgba(255,255,255,0.12);
+      text-align: left;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.35);
+    }
+
+    .premium-panel h3 {
+      margin: 0 0 10px;
+      color: #f3f5ff;
+    }
+
+    .premium-panel p {
+      margin: 0 0 18px;
+      color: #b9c1e8;
+      line-height: 1.7;
+    }
+
+    .premium-features {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+
+    .premium-features div {
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #e1e7ff;
+    }
+
+    .premium-modal-card {
+      width: min(520px, calc(100% - 48px));
+      padding: 28px 28px 24px;
+      border-radius: 28px;
+      background: rgba(12, 15, 24, 0.98);
+      border: 1px solid rgba(255,255,255,0.12);
+      box-shadow: 0 32px 110px rgba(0,0,0,0.38);
+      position: relative;
+      text-align: center;
+    }
+
+    .premium-modal-title {
+      margin: 0 0 10px;
+      font-size: 1.7rem;
+      color: #f0f4ff;
+      letter-spacing: -0.02em;
+    }
+
+    .premium-modal-copy {
+      margin: 0 0 20px;
+      color: #c9d0f2;
+      line-height: 1.7;
+    }
+
+    .premium-close {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255,255,255,0.08);
+      color: #eef1ff;
+      cursor: pointer;
+      font-size: 1.25rem;
+    }
+
+    .premium-action {
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: none;
+      background: linear-gradient(135deg, #7c92ff, #6af5d4);
+      color: #061122;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .premium-panel button {
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 16px;
+      border: none;
+      background: linear-gradient(135deg, #7c92ff, #6af5d4);
+      color: #061122;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(6, 7, 15, 0.9);
+      z-index: 20;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    .overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .overlay-card {
+      width: min(620px, calc(100% - 48px));
+      padding: 32px;
+      border-radius: 28px;
+      background: rgba(12, 15, 24, 0.95);
+      border: 1px solid rgba(255,255,255,0.12);
+      box-shadow: 0 24px 80px rgba(0,0,0,0.45);
+      text-align: center;
+    }
+
+    .overlay-title {
+      font-size: 2rem;
+      margin-bottom: 12px;
+      color: #e7ebff;
+      letter-spacing: -0.03em;
+    }
+
+    .overlay-copy {
+      color: #b5bdd7;
+      max-width: 520px;
+      margin: 0 auto 24px;
+      line-height: 1.6;
+    }
+
+    .overlay-presets {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .overlayPresetBtn {
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(124,146,255,0.12);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #eef1ff;
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+
+    .overlayPresetBtn:hover {
+      transform: translateY(-1px);
+      background: rgba(124,146,255,0.2);
+    }
+
+    #launchBtn {
+      width: 100%;
+      max-width: 260px;
+      margin: 0 auto;
+    }
+
+    .overlay-hint {
+      margin-top: 18px;
+      color: #8a94b7;
+      font-size: 0.9rem;
+      letter-spacing: 0.02em;
+    }
+
+    @media (max-width: 1040px) {
+      #main { grid-template-columns: 1fr; }
+      aside { width: 100%; height: 420px; position: relative; }
+      .inset-map, .inset-phase, .inset-energy, .inset-chaos { position: static; width: auto; margin-top: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="topbar"></div>
+  <div id="startupOverlay" class="overlay active">
+    <div class="overlay-card">
+      <div class="overlay-title">Three-Body Problem</div>
+      <p class="overlay-copy">Launch a precision gravitational simulator with live analytics, chaos detection, and trajectory prediction.</p>
+      <div class="overlay-presets">
+        <button class="overlayPresetBtn" data-preset="figure8">Figure-8</button>
+        <button class="overlayPresetBtn" data-preset="lagrange">Lagrange</button>
+        <button class="overlayPresetBtn" data-preset="broucke">Broucke-Henon</button>
+        <button class="overlayPresetBtn" data-preset="random">Random chaotic</button>
+        <button class="overlayPresetBtn" data-preset="pythagorean">Pythagorean</button>
+        <button class="overlayPresetBtn" data-preset="figure9">Figure-9</button>
+      </div>
+      <button id="launchBtn">Start Simulation</button>
+      <div class="overlay-hint">Keyboard: Space = play/pause, R = reset, F = force, T = trails, +/- = speed.</div>
+    </div>
+  </div>
+  <div id="main">
+    <div id="viewer">
+      <canvas id="scene"></canvas>
+      <div class="inset-panel inset-chaos">
+        <div class="inset-title"><span>Chaos level</span><strong id="chaosValue">0.00</strong></div>
+        <div id="chaosBars"></div>
+      </div>
+      <div class="inset-panel inset-map">
+        <div class="inset-title"><span>Mini-map</span></div>
+        <canvas id="minimap" width="340" height="180"></canvas>
+      </div>
+      <div class="inset-panel inset-phase">
+        <div class="inset-title"><span>Phase portrait</span><strong>B1</strong></div>
+        <canvas id="phase" width="340" height="180"></canvas>
+      </div>
+      <div class="inset-panel inset-energy">
+        <div class="inset-title"><span>Energy drift</span><strong id="energyDriftLabel">0.00%</strong></div>
+        <canvas id="energySpark" width="340" height="180"></canvas>
+      </div>
+    </div>
+    <aside>
+      <div class="section">
+        <h2>Simulation</h2>
+        <div class="button-group">
+          <button id="playPauseBtn">Pause</button>
+          <button id="resetBtn">Reset</button>
+          <button id="resetViewBtn">Reset view</button>
+          <button id="fitViewBtn">Fit view</button>
+          <button id="stepBtn">Step</button>
+        </div>
+        <label>Speed <span id="speedValue">1.00x</span>
+          <input id="speedSlider" type="range" min="0.1" max="10" step="0.1" value="1">
+        </label>
+        <label><span>Trails</span><input id="trailToggle" type="checkbox" checked></label>
+        <label><span>Force vectors</span><input id="forceToggle" type="checkbox" checked></label>
+        <label><span>Show COM</span><input id="comToggle" type="checkbox" checked></label>
+        <label><span>Butterfly effect</span><input id="butterflyToggle" type="checkbox" checked></label>
+        <label><span>Prediction path</span><input id="predictionToggle" type="checkbox" checked></label>
+        <div class="help-text">Keyboard: Space = play/pause, R = reset, F = force, T = trails, +/- = speed.</div>
+        <button id="screenshotBtn" style="width:100%; margin-top:12px;">Download Snapshot</button>
+      </div>
+      <div class="section">
+        <h2>Presets</h2>
+        <div class="preset-grid">
+          <button class="presetBtn" data-preset="figure8">Figure-8</button>
+          <button class="presetBtn" data-preset="lagrange">Lagrange</button>
+          <button class="presetBtn" data-preset="broucke">Broucke-Henon</button>
+          <button class="presetBtn" data-preset="random">Random chaotic</button>
+          <button class="presetBtn" data-preset="pythagorean">Pythagorean</button>
+          <button class="presetBtn" data-preset="figure9">Figure-9</button>
+        </div>
+          <div class="control-row" style="margin-top:12px; gap:10px; align-items:center;">
+          <div style="flex:1; color:#c3cadf; font-size:0.92rem;">Current preset: <strong id="currentPresetLabel">Figure-8</strong></div>
+          <button id="resetPresetBtn">Restore preset</button>
+        </div>
+      </div>
+      <div class="section">
+        <h2>Tools</h2>
+        <div class="premium-input-row">
+          <input id="presetNameInput" type="text" placeholder="Preset name" />
+          <button id="savePresetBtn" type="button">Save preset</button>
+        </div>
+        <div class="premium-input-row">
+          <select id="presetSelect"></select>
+          <button id="loadPresetBtn" type="button">Load preset</button>
+        </div>
+        <div class="premium-input-row" style="gap:10px; flex-wrap:wrap;">
+          <button id="saveScenarioBtn" type="button">Save scenario</button>
+          <button id="loadScenarioBtn" type="button">Load scenario</button>
+        </div>
+        <div class="premium-input-row" style="gap:10px; flex-wrap:wrap; margin-top:10px;">
+          <button id="exportOrbitJsonBtn" type="button">Export JSON</button>
+          <button id="exportOrbitCsvBtn" type="button">Export CSV</button>
+        </div>
+        <button id="toggleAnalyticsBtn" type="button" style="margin-top:12px; width:100%;">Toggle advanced analytics</button>
+      </div>
+      <div class="section">
+        <h2>Body Editor</h2>
+        <details open>
+          <summary>Body 1</summary>
+          <div class="details" id="bodyPanel0"></div>
+        </details>
+        <details>
+          <summary>Body 2</summary>
+          <div class="details" id="bodyPanel1"></div>
+        </details>
+        <details>
+          <summary>Body 3</summary>
+          <div class="details" id="bodyPanel2"></div>
+        </details>
+      </div>
+      <div class="section">
+        <h2>Physics Settings</h2>
+        <label>G constant <span id="gValue">1.00</span>
+          <input id="gSlider" type="range" min="0.1" max="20" step="0.1" value="1">
+        </label>
+        <label>Softening ε <span id="epsValue">0.10</span>
+          <input id="epsilonSlider" type="range" min="0.001" max="1" step="0.001" value="0.1">
+        </label>
+        <label>Integrator
+          <select id="integratorSelect">
+            <option value="RK4">RK4</option>
+            <option value="Verlet">Verlet</option>
+            <option value="Euler">Euler</option>
+          </select>
+        </label>
+        <label>Trail length <span id="trailLenValue">400</span>
+          <input id="trailLenSlider" type="range" min="50" max="800" step="10" value="400">
+        </label>
+        <div class="control-row" style="margin-top:14px; gap:10px; align-items:center;">
+          <button id="resetPhysicsBtn">Reset physics</button>
+          <div style="flex:1; color:#c3cadf; font-size:0.92rem;">Physics reset restores G, ε, integrator, and trails.</div>
+        </div>
+      </div>
+      <div class="section">
+        <h2>Selected Body</h2>
+        <div class="details" id="selectedStats">
+          <div class="help-text">Click a body in the canvas to inspect its state.</div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    /* Three-Body Problem Simulator */
+    const canvas = document.getElementById('scene');
+    const ctx = canvas.getContext('2d');
+    const minimap = document.getElementById('minimap');
+    const miniCtx = minimap.getContext('2d');
+    const phaseCanvas = document.getElementById('phase');
+    const phaseCtx = phaseCanvas.getContext('2d');
+    const energyCanvas = document.getElementById('energySpark');
+    const energyCtx = energyCanvas.getContext('2d');
+    const topbar = document.getElementById('topbar');
+    const chaosBars = document.getElementById('chaosBars');
+    const chaosValueLabel = document.getElementById('chaosValue');
+    const energyDriftLabel = document.getElementById('energyDriftLabel');
+    const selectedStats = document.getElementById('selectedStats');
+
+    const inputs = {
+      playPauseBtn: document.getElementById('playPauseBtn'),
+      resetBtn: document.getElementById('resetBtn'),
+      resetPresetBtn: document.getElementById('resetPresetBtn'),
+      resetPhysicsBtn: document.getElementById('resetPhysicsBtn'),
+      resetViewBtn: document.getElementById('resetViewBtn'),
+      fitViewBtn: document.getElementById('fitViewBtn'),
+      stepBtn: document.getElementById('stepBtn'),
+      speedSlider: document.getElementById('speedSlider'),
+      speedValue: document.getElementById('speedValue'),
+      trailToggle: document.getElementById('trailToggle'),
+      forceToggle: document.getElementById('forceToggle'),
+      comToggle: document.getElementById('comToggle'),
+      butterflyToggle: document.getElementById('butterflyToggle'),
+      predictionToggle: document.getElementById('predictionToggle'),
+      screenshotBtn: document.getElementById('screenshotBtn'),
+      gSlider: document.getElementById('gSlider'),
+      gValue: document.getElementById('gValue'),
+      epsilonSlider: document.getElementById('epsilonSlider'),
+      epsValue: document.getElementById('epsValue'),
+      integratorSelect: document.getElementById('integratorSelect'),
+      trailLenSlider: document.getElementById('trailLenSlider'),
+      trailLenValue: document.getElementById('trailLenValue'),
+      presetNameInput: document.getElementById('presetNameInput'),
+      presetSelect: document.getElementById('presetSelect'),
+      savePresetBtn: document.getElementById('savePresetBtn'),
+      loadPresetBtn: document.getElementById('loadPresetBtn'),
+      saveScenarioBtn: document.getElementById('saveScenarioBtn'),
+      loadScenarioBtn: document.getElementById('loadScenarioBtn'),
+      exportOrbitJsonBtn: document.getElementById('exportOrbitJsonBtn'),
+      exportOrbitCsvBtn: document.getElementById('exportOrbitCsvBtn'),
+      toggleAnalyticsBtn: document.getElementById('toggleAnalyticsBtn')
+    };
+
+    const liveFields = {
+      energy: createDataPill('Total E'),
+      ke: createDataPill('Kinetic'),
+      pe: createDataPill('Potential'),
+      angMom: createDataPill('Angular L'),
+      com: createDataPill('Center of mass'),
+      simTime: createDataPill('Sim time'),
+      selected: createDataPill('Selected'),
+      fps: createDataPill('FPS'),
+      collision: createDataPill('Collision'),
+      extraAnalysis: createDataPill('Advanced metric')
+    };
+
+    function createDataPill(label) {
+      const pill = document.createElement('div');
+      pill.className = 'pill';
+      pill.innerHTML = `<span>${label}</span><strong>0.00</strong>`;
+      topbar.appendChild(pill);
+      return pill.querySelector('strong');
+    }
+
+    const state = {
+      bodies: [],
+      originalBodies: [],
+      cloneBodies: [],
+      trailLength: 400,
+      G: 1,
+      epsilon: 0.1,
+      integrator: 'RK4',
+      speed: 1,
+      showTrails: true,
+      showForces: true,
+      showCOM: true,
+      showPrediction: true,
+      butterfly: true,
+      time: 0,
+      fps: 0,
+      collision: false,
+      viewX: 0,
+      viewY: 0,
+      zoom: 56,
+      selectedBody: null,
+      advancedAnalytics: false,
+      energyHistory: [],
+      phaseHistory: [],
+      chaosHistory: Array.from({ length: 7 }, () => 0),
+      initialDivergence: 1e-6,
+      driftOffset: 0,
+      renderTime: performance.now(),
+      lastFrame: performance.now(),
+      paused: true,
+      predictionPoints: [[], [], []],
+      bounds: { minX: -5, maxX: 5, minY: -5, maxY: 5 },
+      currentPreset: 'figure8'
+    };
+
+    const presets = {
+      figure8: {
+        name: 'Figure-8', bodies: [
+          { mass: 1, x: 2.0, y: 0.0, vx: 0.0, vy: 0.32, color: '#7c92ff' },
+          { mass: 1, x: -1.0, y: 1.74, vx: -0.29, vy: -0.16, color: '#f9ba6b' },
+          { mass: 1, x: -1.0, y: -1.74, vx: 0.29, vy: -0.16, color: '#6af5d4' }
+        ]
+      },
+      lagrange: {
+        name: 'Lagrange', bodies: [
+          { mass: 1.2, x: -3.0, y: -1.7, vx: 0.27, vy: -0.11, color: '#7c92ff' },
+          { mass: 1.2, x: 3.0, y: -1.7, vx: -0.27, vy: -0.11, color: '#f9ba6b' },
+          { mass: 1.2, x: 0.0, y: 3.4, vx: 0.0, vy: 0.22, color: '#6af5d4' }
+        ]
+      },
+      broucke: {
+        name: 'Broucke-Henon', bodies: [
+          { mass: 1.0, x: 0.0, y: 0.0, vx: 0.0, vy: 0.35, color: '#7c92ff' },
+          { mass: 1.0, x: 1.4, y: 0.0, vx: -0.19, vy: -0.02, color: '#f9ba6b' },
+          { mass: 1.0, x: -1.1, y: 0.9, vx: -0.06, vy: -0.33, color: '#6af5d4' }
+        ]
+      },
+      random: {
+        name: 'Random chaotic', bodies: Array.from({ length: 3 }, (_, index) => ({
+          mass: 0.6 + Math.random() * 2.8,
+          x: (Math.random() - 0.5) * 6,
+          y: (Math.random() - 0.5) * 6,
+          vx: (Math.random() - 0.5) * 0.4,
+          vy: (Math.random() - 0.5) * 0.4,
+          color: ['#7c92ff', '#f9ba6b', '#6af5d4'][index]
+        }))
+      },
+      pythagorean: {
+        name: 'Pythagorean', bodies: [
+          { mass: 3, x: -2.5, y: 0.0, vx: 0.0, vy: 0.16, color: '#7c92ff' },
+          { mass: 4, x: 1.5, y: 1.0, vx: -0.05, vy: -0.11, color: '#f9ba6b' },
+          { mass: 5, x: 1.0, y: -1.2, vx: 0.06, vy: -0.03, color: '#6af5d4' }
+        ]
+      },
+      figure9: {
+        name: 'Figure-9', bodies: [
+          { mass: 1, x: 2.2, y: 0.0, vx: 0.0, vy: 0.30, color: '#7c92ff' },
+          { mass: 1, x: -1.05, y: 1.95, vx: -0.24, vy: -0.16, color: '#f9ba6b' },
+          { mass: 1, x: -1.05, y: -1.95, vx: 0.24, vy: -0.16, color: '#6af5d4' }
+        ]
+      }
+    };
+
+    function createBody(data) {
+      return {
+        mass: data.mass,
+        x: data.x,
+        y: data.y,
+        vx: data.vx,
+        vy: data.vy,
+        color: data.color,
+        trail: [],
+        cloneTrail: [],
+        selected: false
+      };
+    }
+
+    function cloneBodies(bodies, offset = 1e-6) {
+      return bodies.map((b, index) => {
+        const perturb = index === 0 ? offset : 0;
+        return {
+          mass: b.mass,
+          x: b.x + perturb,
+          y: b.y,
+          vx: b.vx,
+          vy: b.vy,
+          color: b.color,
+          trail: []
+        };
+      });
+    }
+
+    function resetSimulation() {
+      state.time = 0;
+      state.energyHistory = [];
+      state.phaseHistory = [];
+      state.predictionPoints = [[], [], []];
+      state.chaosHistory = Array.from({ length: 7 }, () => 0);
+      state.initialDivergence = 1e-6;
+      state.selectedBody = null;
+      state.bounds = { minX: -6, maxX: 6, minY: -6, maxY: 6 };
+      state.cloneBodies = cloneBodies(state.bodies, 1e-6);
+      state.bodies.forEach(body => { body.trail = []; body.cloneTrail = []; });
+      updateSelectedStats();
+      computePredictions();
+    }
+
+    function loadPreset(key) {
+      state.currentPreset = key;
+      const preset = presets[key];
+      state.bodies = preset.bodies.map(createBody);
+      state.originalBodies = preset.bodies.map(body => ({ ...body }));
+      state.viewX = 0;
+      state.viewY = 0;
+      state.zoom = 58;
+      updateCurrentPresetLabel();
+      updateEditors();
+      resetSimulation();
+    }
+
+    const physicsDefaults = {
+      G: 1,
+      epsilon: 0.1,
+      integrator: 'RK4',
+      trailLength: 400
+    };
+
+    function resetPhysics() {
+      state.G = physicsDefaults.G;
+      state.epsilon = physicsDefaults.epsilon;
+      state.integrator = physicsDefaults.integrator;
+      state.trailLength = physicsDefaults.trailLength;
+      inputs.gSlider.value = state.G;
+      inputs.gValue.textContent = state.G.toFixed(2);
+      inputs.epsilonSlider.value = state.epsilon;
+      inputs.epsValue.textContent = state.epsilon.toFixed(3);
+      inputs.integratorSelect.value = state.integrator;
+      inputs.trailLenSlider.value = state.trailLength;
+      inputs.trailLenValue.textContent = state.trailLength;
+      resetSimulation();
+    }
+
+    function resetBody(index) {
+      const original = state.originalBodies[index];
+      state.bodies[index] = createBody({ ...original });
+      state.bodies.forEach(body => { body.trail = []; body.cloneTrail = []; });
+      state.cloneBodies = cloneBodies(state.bodies, state.initialDivergence);
+      state.predictionPoints = [[], [], []];
+      updateEditors();
+      updateSelectedStats();
+      computePredictions();
+    }
+
+    function updateCurrentPresetLabel() {
+      const label = document.getElementById('currentPresetLabel');
+      if (label) {
+        label.textContent = state.currentPreset === 'custom'
+          ? (state.customPresetName || 'Saved scenario')
+          : presets[state.currentPreset].name;
+      }
+      document.querySelectorAll('.presetBtn, .overlayPresetBtn').forEach(button => {
+        button.classList.toggle('active', button.dataset.preset === state.currentPreset);
+      });
+    }
+
+    function getLocalPresets() {
+      const raw = localStorage.getItem('threeBodySavedPresets');
+      return raw ? JSON.parse(raw) : [];
+    }
+
+    function saveLocalPresets(presets) {
+      localStorage.setItem('threeBodySavedPresets', JSON.stringify(presets));
+    }
+
+    function addLocalPreset(preset) {
+      const presets = getLocalPresets();
+      const existing = presets.find(p => p.name === preset.name);
+      if (existing) {
+        existing.bodyState = preset.bodyState;
+        existing.physics = preset.physics;
+        existing.updatedAt = Date.now();
+      } else {
+        presets.push({ ...preset, createdAt: Date.now() });
+      }
+      saveLocalPresets(presets);
+      return presets;
+    }
+
+    function renderPresetOptions(presets = []) {
+      const select = inputs.presetSelect;
+      select.innerHTML = '';
+      if (presets.length === 0) {
+        select.innerHTML = '<option value="">No saved presets</option>';
+        return;
+      }
+      presets.forEach(preset => {
+        const option = document.createElement('option');
+        option.value = preset.name;
+        option.textContent = preset.name;
+        select.appendChild(option);
+      });
+    }
+
+    async function fetchSavedPresets() {
+      let savedPresets = getLocalPresets();
+      try {
+        const response = await fetch('/saved-presets');
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data.presets)) {
+            const merged = [...data.presets];
+            savedPresets.forEach(localPreset => {
+              if (!merged.some(p => p.name === localPreset.name)) {
+                merged.push(localPreset);
+              }
+            });
+            renderPresetOptions(merged);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Unable to load saved presets from server', err);
+      }
+      renderPresetOptions(savedPresets);
+    }
+
+    async function savePreset() {
+      const name = inputs.presetNameInput.value.trim();
+      if (!name) {
+        alert('Enter a preset name before saving.');
+        return;
+      }
+      const save = {
+        name,
+        bodyState: state.bodies.map(b => ({ mass: b.mass, x: b.x, y: b.y, vx: b.vx, vy: b.vy, color: b.color })),
+        physics: { G: state.G, epsilon: state.epsilon, integrator: state.integrator, trailLength: state.trailLength },
+      };
+      let message = `Preset "${name}" saved.`;
+      try {
+        const response = await fetch('/save-preset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(save)
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+          addLocalPreset(save);
+          await fetchSavedPresets();
+          alert(message);
+          return;
+        }
+        throw new Error(data.error || 'Save failed');
+      } catch (err) {
+        console.warn(err);
+        addLocalPreset(save);
+        await fetchSavedPresets();
+        alert(message + ' (saved locally)');
+      }
+    }
+    async function loadPresetByName() {
+      const name = inputs.presetSelect.value;
+      if (!name) {
+        alert('Choose a preset from the list first.');
+        return;
+      }
+      const localPresets = getLocalPresets();
+      try {
+        const response = await fetch(`/load-preset?name=${encodeURIComponent(name)}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.preset) {
+            const preset = data.preset;
+            state.bodies = preset.bodyState.map(createBody);
+            state.originalBodies = preset.bodyState.map(body => ({ ...body }));
+            state.G = preset.physics.G;
+            state.epsilon = preset.physics.epsilon;
+            state.integrator = preset.physics.integrator;
+            state.trailLength = preset.physics.trailLength;
+            state.currentPreset = 'custom';
+            state.customPresetName = preset.name;
+            inputs.gSlider.value = state.G;
+            inputs.gValue.textContent = state.G.toFixed(2);
+            inputs.epsilonSlider.value = state.epsilon;
+            inputs.epsValue.textContent = state.epsilon.toFixed(3);
+            inputs.integratorSelect.value = state.integrator;
+            inputs.trailLenSlider.value = state.trailLength;
+            inputs.trailLenValue.textContent = state.trailLength;
+            updateCurrentPresetLabel();
+            updateEditors();
+            resetSimulation();
+            alert(`Preset "${preset.name}" loaded.`);
+            return;
+          }
+        }
+        throw new Error('Server preset load failed');
+      } catch (err) {
+        const localPreset = localPresets.find(p => p.name === name);
+        if (localPreset) {
+          const preset = localPreset;
+          state.bodies = preset.bodyState.map(createBody);
+          state.originalBodies = preset.bodyState.map(body => ({ ...body }));
+          state.G = preset.physics.G;
+          state.epsilon = preset.physics.epsilon;
+          state.integrator = preset.physics.integrator;
+          state.trailLength = preset.physics.trailLength;
+          state.currentPreset = 'custom';
+          state.customPresetName = preset.name;
+          inputs.gSlider.value = state.G;
+          inputs.gValue.textContent = state.G.toFixed(2);
+          inputs.epsilonSlider.value = state.epsilon;
+          inputs.epsValue.textContent = state.epsilon.toFixed(3);
+          inputs.integratorSelect.value = state.integrator;
+          inputs.trailLenSlider.value = state.trailLength;
+          inputs.trailLenValue.textContent = state.trailLength;
+          updateCurrentPresetLabel();
+          updateEditors();
+          resetSimulation();
+          alert(`Preset "${preset.name}" loaded from local storage.`);
+          return;
+        }
+        console.warn(err);
+        alert('Could not load preset.');
+      }
+    }
+
+    function exportOrbitJsonData() {
+      const payload = {
+        timestamp: Date.now(),
+        time: state.time,
+        bodies: state.bodies.map((body, index) => ({
+          index: index + 1,
+          mass: body.mass,
+          x: body.x,
+          y: body.y,
+          vx: body.vx,
+          vy: body.vy,
+          color: body.color
+        }))
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'three-body-orbit-log.json';
+      link.click();
+      URL.revokeObjectURL(link.href);
+    }
+
+    function exportOrbitCsvData() {
+      const header = ['timestamp', 'time', 'body', 'mass', 'x', 'y', 'vx', 'vy', 'color'];
+      const rows = state.bodies.map((body, index) => [
+        Date.now(),
+        state.time,
+        index + 1,
+        body.mass,
+        body.x,
+        body.y,
+        body.vx,
+        body.vy,
+        body.color
+      ]);
+      const csv = [header.join(','), ...rows.map(row => row.join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'three-body-orbit-log.csv';
+      link.click();
+      URL.revokeObjectURL(link.href);
+    }
+
+    async function savePremiumScenario() {
+      const save = {
+        bodyState: state.bodies.map(b => ({ mass: b.mass, x: b.x, y: b.y, vx: b.vx, vy: b.vy, color: b.color })),
+        physics: { G: state.G, epsilon: state.epsilon, integrator: state.integrator, trailLength: state.trailLength },
+        presetName: 'Saved scenario',
+      };
+      try {
+        const response = await fetch('/save-scenario', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(save),
+        });
+        const data = await response.json();
+        if (data.success) {
+          alert('Scenario saved to the web for this browser.');
+          return;
+        }
+        throw new Error(data.error || 'Save failed');
+      } catch (err) {
+        console.warn(err);
+        localStorage.setItem('threeBodyPremiumScenario', JSON.stringify(save));
+        alert('Scenario saved locally.');
+      }
+    }
+
+    async function loadPremiumScenario() {
+      try {
+        const response = await fetch('/load-scenario');
+        const data = await response.json();
+        if (data.scenario) {
+          const saved = data.scenario;
+          state.bodies = saved.bodyState.map(createBody);
+          state.originalBodies = saved.bodyState.map(body => ({ ...body }));
+          state.G = saved.physics.G;
+          state.epsilon = saved.physics.epsilon;
+          state.integrator = saved.physics.integrator;
+          state.trailLength = saved.physics.trailLength;
+          state.currentPreset = 'custom';
+          state.customPresetName = saved.presetName || 'Saved scenario';
+          inputs.gSlider.value = state.G;
+          inputs.gValue.textContent = state.G.toFixed(2);
+          inputs.epsilonSlider.value = state.epsilon;
+          inputs.epsValue.textContent = state.epsilon.toFixed(3);
+          inputs.integratorSelect.value = state.integrator;
+          inputs.trailLenSlider.value = state.trailLength;
+          inputs.trailLenValue.textContent = state.trailLength;
+          updateCurrentPresetLabel();
+          updateEditors();
+          resetSimulation();
+          alert('Saved scenario loaded from the web.');
+          return;
+        }
+        throw new Error('No scenario');
+      } catch (err) {
+        console.warn(err);
+        const saved = localStorage.getItem('threeBodyPremiumScenario');
+        if (!saved) {
+          alert('No saved scenario found. Save one first.');
+          return;
+        }
+        const data = JSON.parse(saved);
+        state.bodies = data.bodyState.map(createBody);
+        state.originalBodies = data.bodyState.map(body => ({ ...body }));
+        state.G = data.physics.G;
+        state.epsilon = data.physics.epsilon;
+        state.integrator = data.physics.integrator;
+        state.trailLength = data.physics.trailLength;
+        state.currentPreset = 'custom';
+        state.customPresetName = data.presetName || 'Saved scenario';
+        inputs.gSlider.value = state.G;
+        inputs.gValue.textContent = state.G.toFixed(2);
+        inputs.epsilonSlider.value = state.epsilon;
+        inputs.epsValue.textContent = state.epsilon.toFixed(3);
+        inputs.integratorSelect.value = state.integrator;
+        inputs.trailLenSlider.value = state.trailLength;
+        inputs.trailLenValue.textContent = state.trailLength;
+        updateCurrentPresetLabel();
+        updateEditors();
+        resetSimulation();
+        alert('Saved scenario loaded locally.');
+      }
+    }
+
+    function exportOrbitData() {
+      const payload = {
+        time: state.time,
+        bodies: state.bodies.map((body, i) => ({
+          body: i + 1,
+          mass: body.mass,
+          x: body.x,
+          y: body.y,
+          vx: body.vx,
+          vy: body.vy,
+          color: body.color
+        }))
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'three-body-data.json';
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function resetToCurrentPreset() {
+      if (state.currentPreset === 'custom') {
+        loadPremiumScenario();
+      } else {
+        loadPreset(state.currentPreset);
+      }
+    }
+
+    function showStartupOverlay() {
+      const overlay = document.getElementById('startupOverlay');
+      overlay.classList.remove('hidden');
+      state.paused = true;
+      inputs.playPauseBtn.textContent = 'Play';
+    }
+
+    function hideStartupOverlay() {
+      const overlay = document.getElementById('startupOverlay');
+      overlay.classList.add('hidden');
+      state.paused = false;
+      inputs.playPauseBtn.textContent = 'Pause';
+    }
+
+    function updateEditors() {
+      for (let i = 0; i < 3; i++) {
+        const container = document.getElementById(`bodyPanel${i}`);
+        container.innerHTML = '';
+        const body = state.bodies[i];
+        const restoreButton = document.createElement('button');
+        restoreButton.type = 'button';
+        restoreButton.textContent = `Restore body ${i + 1}`;
+        restoreButton.style.width = '100%';
+        restoreButton.style.marginBottom = '10px';
+        restoreButton.addEventListener('click', () => {
+          resetBody(i);
+        });
+        container.appendChild(restoreButton);
+        container.appendChild(createBodyControl(i, 'Mass', 'mass', 0.1, 10, 0.01, body.mass, body.mass.toFixed(2)));
+        container.appendChild(createBodyControl(i, 'Color', 'color', null, null, null, body.color));
+        container.appendChild(createBodyControl(i, 'Position X', 'x', -8, 8, 0.05, body.x, body.x.toFixed(2)));
+        container.appendChild(createBodyControl(i, 'Position Y', 'y', -8, 8, 0.05, body.y, body.y.toFixed(2)));
+        container.appendChild(createBodyControl(i, 'Velocity Vx', 'vx', -1, 1, 0.01, body.vx, body.vx.toFixed(2)));
+        container.appendChild(createBodyControl(i, 'Velocity Vy', 'vy', -1, 1, 0.01, body.vy, body.vy.toFixed(2)));
+      }
+    }
+
+    function createBodyControl(index, labelText, property, min, max, step, value, displayText) {
+      const wrapper = document.createElement('label');
+      wrapper.innerHTML = `<span>${labelText} <strong>${displayText || value}</strong></span>`;
+      if (property === 'color') {
+        const input = document.createElement('input');
+        input.type = 'color';
+        input.value = value;
+        input.addEventListener('input', ev => {
+          state.bodies[index].color = ev.target.value;
+          updateEditors();
+        });
+        wrapper.appendChild(input);
+      } else {
+        const input = document.createElement('input');
+        input.type = 'range';
+        input.min = min;
+        input.max = max;
+        input.step = step;
+        input.value = value;
+        input.addEventListener('input', ev => {
+          const numericValue = parseFloat(ev.target.value);
+          state.bodies[index][property] = numericValue;
+          wrapper.querySelector('strong').textContent = numericValue.toFixed(2);
+          resetSimulation();
+        });
+        wrapper.appendChild(input);
+      }
+      return wrapper;
+    }
+
+    function formatNumber(value, digits = 2) {
+      return value.toFixed(digits);
+    }
+
+    function computeAccelerations(bodies) {
+      const acc = bodies.map(() => ({ ax: 0, ay: 0 }));
+      for (let i = 0; i < bodies.length; i++) {
+        const bi = bodies[i];
+        for (let j = 0; j < bodies.length; j++) {
+          if (i === j) continue;
+          const bj = bodies[j];
+          const dx = bj.x - bi.x;
+          const dy = bj.y - bi.y;
+          const r2 = dx * dx + dy * dy + state.epsilon * state.epsilon;
+          const inv = 1 / Math.pow(r2, 1.5);
+          const factor = state.G * bj.mass * inv;
+          acc[i].ax += dx * factor;
+          acc[i].ay += dy * factor;
+        }
+      }
+      return acc;
+    }
+
+    function stepBodies(bodies, dt, integrator) {
+      if (integrator === 'Euler') {
+        const acc = computeAccelerations(bodies);
+        bodies.forEach((body, i) => {
+          body.vx += acc[i].ax * dt;
+          body.vy += acc[i].ay * dt;
+          body.x += body.vx * dt;
+          body.y += body.vy * dt;
+        });
+        return;
+      }
+
+      if (integrator === 'Verlet') {
+        const acc0 = computeAccelerations(bodies);
+        bodies.forEach((body, i) => {
+          body.x += body.vx * dt + 0.5 * acc0[i].ax * dt * dt;
+          body.y += body.vy * dt + 0.5 * acc0[i].ay * dt * dt;
+        });
+        const acc1 = computeAccelerations(bodies);
+        bodies.forEach((body, i) => {
+          body.vx += 0.5 * (acc0[i].ax + acc1[i].ax) * dt;
+          body.vy += 0.5 * (acc0[i].ay + acc1[i].ay) * dt;
+        });
+        return;
+      }
+
+      const n = bodies.length;
+      const stateVector = new Float64Array(n * 4);
+      for (let i = 0; i < n; i++) {
+        const b = bodies[i];
+        const offset = i * 4;
+        stateVector[offset] = b.x;
+        stateVector[offset + 1] = b.y;
+        stateVector[offset + 2] = b.vx;
+        stateVector[offset + 3] = b.vy;
+      }
+
+      function derivative(vec) {
+        const positions = [];
+        for (let i = 0; i < n; i++) {
+          const off = i * 4;
+          positions.push({ x: vec[off], y: vec[off + 1], vx: vec[off + 2], vy: vec[off + 3], mass: bodies[i].mass });
+        }
+        const acc = computeAccelerations(positions);
+        const out = new Float64Array(n * 4);
+        for (let i = 0; i < n; i++) {
+          const off = i * 4;
+          out[off] = positions[i].vx;
+          out[off + 1] = positions[i].vy;
+          out[off + 2] = acc[i].ax;
+          out[off + 3] = acc[i].ay;
+        }
+        return out;
+      }
+
+      const k1 = derivative(stateVector);
+      const temp2 = new Float64Array(stateVector.length);
+      const temp3 = new Float64Array(stateVector.length);
+      const temp4 = new Float64Array(stateVector.length);
+      for (let i = 0; i < stateVector.length; i++) temp2[i] = stateVector[i] + k1[i] * dt * 0.5;
+      const k2 = derivative(temp2);
+      for (let i = 0; i < stateVector.length; i++) temp3[i] = stateVector[i] + k2[i] * dt * 0.5;
+      const k3 = derivative(temp3);
+      for (let i = 0; i < stateVector.length; i++) temp4[i] = stateVector[i] + k3[i] * dt;
+      const k4 = derivative(temp4);
+      for (let i = 0; i < stateVector.length; i++) {
+        stateVector[i] += (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]) * dt / 6;
+      }
+
+      for (let i = 0; i < n; i++) {
+        const off = i * 4;
+        bodies[i].x = stateVector[off];
+        bodies[i].y = stateVector[off + 1];
+        bodies[i].vx = stateVector[off + 2];
+        bodies[i].vy = stateVector[off + 3];
+      }
+    }
+
+    function calculateEnergy(bodies) {
+      let ke = 0;
+      let pe = 0;
+      let ang = 0;
+      let mx = 0, my = 0, mTotal = 0;
+      for (const body of bodies) {
+        const speed2 = body.vx * body.vx + body.vy * body.vy;
+        ke += 0.5 * body.mass * speed2;
+        ang += body.mass * (body.x * body.vy - body.y * body.vx);
+        mx += body.mass * body.x;
+        my += body.mass * body.y;
+        mTotal += body.mass;
+      }
+      for (let i = 0; i < bodies.length; i++) {
+        for (let j = i + 1; j < bodies.length; j++) {
+          const a = bodies[i];
+          const b = bodies[j];
+          const dx = a.x - b.x;
+          const dy = a.y - b.y;
+          const r = Math.sqrt(dx * dx + dy * dy + state.epsilon * state.epsilon);
+          pe -= state.G * a.mass * b.mass / r;
+        }
+      }
+      return {
+        ke, pe, total: ke + pe,
+        angular: ang,
+        comX: mx / mTotal,
+        comY: my / mTotal
+      };
+    }
+
+    function recordTrail(body) {
+      body.trail.push({ x: body.x, y: body.y });
+      if (body.trail.length > state.trailLength) body.trail.shift();
+    }
+
+    function recordCloneTrail(body) {
+      if (!body.cloneTrail) body.cloneTrail = [];
+      body.cloneTrail.push({ x: body.x, y: body.y });
+      if (body.cloneTrail.length > state.trailLength) body.cloneTrail.shift();
+    }
+
+    function transformPoint(x, y) {
+      const { width, height } = canvas;
+      return {
+        x: (x - state.viewX) * state.zoom + width / 2,
+        y: height / 2 - (y - state.viewY) * state.zoom
+      };
+    }
+
+    function drawScene() {
+      const dpr = window.devicePixelRatio || 1;
+      const width = canvas.clientWidth * dpr;
+      const height = canvas.clientHeight * dpr;
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = '#090a12';
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.save();
+      ctx.translate(width / 2, height / 2);
+      ctx.scale(state.zoom * dpr / (window.devicePixelRatio || 1), -state.zoom * dpr / (window.devicePixelRatio || 1));
+      ctx.translate(-state.viewX, -state.viewY);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      if (state.showPrediction) {
+        ctx.lineWidth = 1 / state.zoom;
+        ctx.setLineDash([5 / state.zoom, 8 / state.zoom]);
+        for (let i = 0; i < 3; i++) {
+          const path = state.predictionPoints[i];
+          if (!path.length) continue;
+          ctx.strokeStyle = hexToRgba(state.bodies[i].color, 0.35);
+          ctx.beginPath();
+          path.forEach((point, idx) => {
+            if (idx === 0) ctx.moveTo(point.x, point.y);
+            else ctx.lineTo(point.x, point.y);
+          });
+          ctx.stroke();
+        }
+        ctx.setLineDash([]);
+      }
+
+      if (state.showTrails) {
+        for (let i = 0; i < 3; i++) {
+          const body = state.bodies[i];
+          const trail = body.trail;
+          if (trail.length < 2) continue;
+          ctx.lineWidth = Math.max(2 / state.zoom, 0.3);
+          for (let j = 1; j < trail.length; j++) {
+            const t = j / trail.length;
+            ctx.strokeStyle = hexToRgba(body.color, t * 0.4);
+            ctx.beginPath();
+            ctx.moveTo(trail[j - 1].x, trail[j - 1].y);
+            ctx.lineTo(trail[j].x, trail[j].y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      if (state.butterfly) {
+        state.cloneBodies.forEach((body, i) => {
+          if (body.trail.length < 2) return;
+          ctx.lineWidth = 1 / state.zoom;
+          ctx.strokeStyle = hexToRgba(state.bodies[i].color, 0.12);
+          ctx.beginPath();
+          body.trail.forEach((point, idx) => {
+            if (idx === 0) ctx.moveTo(point.x, point.y);
+            else ctx.lineTo(point.x, point.y);
+          });
+          ctx.stroke();
+        });
+      }
+
+      if (state.showForces) {
+        const acc = computeAccelerations(state.bodies);
+        state.bodies.forEach((body, i) => {
+          const ax = acc[i].ax;
+          const ay = acc[i].ay;
+          const mag = Math.sqrt(ax * ax + ay * ay);
+          const length = Math.min(0.8, mag) * 1.4;
+          ctx.strokeStyle = hexToRgba(body.color, 0.85);
+          ctx.lineWidth = 1.2 / state.zoom;
+          ctx.beginPath();
+          ctx.moveTo(body.x, body.y);
+          ctx.lineTo(body.x + ax * length, body.y + ay * length);
+          ctx.stroke();
+          const arrowSize = 0.08;
+          const angle = Math.atan2(ay, ax);
+          ctx.beginPath();
+          ctx.moveTo(body.x + ax * length, body.y + ay * length);
+          ctx.lineTo(body.x + ax * length - Math.cos(angle - Math.PI / 6) * arrowSize, body.y + ay * length - Math.sin(angle - Math.PI / 6) * arrowSize);
+          ctx.lineTo(body.x + ax * length - Math.cos(angle + Math.PI / 6) * arrowSize, body.y + ay * length - Math.sin(angle + Math.PI / 6) * arrowSize);
+          ctx.closePath();
+          ctx.fillStyle = hexToRgba(body.color, 0.8);
+          ctx.fill();
+        });
+      }
+
+      if (state.showCOM) {
+        const energy = calculateEnergy(state.bodies);
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        const pulse = 0.8 + 0.2 * Math.sin(performance.now() / 220);
+        ctx.beginPath();
+        ctx.arc(energy.comX, energy.comY, 0.08 * pulse, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      state.bodies.forEach((body, i) => {
+        const radius = Math.max(0.16, Math.sqrt(body.mass) * 0.18);
+        ctx.fillStyle = body.color;
+        ctx.shadowColor = body.color;
+        ctx.shadowBlur = 8 / state.zoom;
+        ctx.beginPath();
+        ctx.arc(body.x, body.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        if (state.selectedBody === i) {
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 0.05;
+          ctx.beginPath();
+          ctx.arc(body.x, body.y, radius + 0.1, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      });
+
+      ctx.restore();
+      drawMiniMap();
+    }
+
+    function drawMiniMap() {
+      const w = minimap.width;
+      const h = minimap.height;
+      miniCtx.clearRect(0, 0, w, h);
+      miniCtx.fillStyle = '#0b0c14';
+      miniCtx.fillRect(0, 0, w, h);
+      const margin = 8;
+      const pad = 12;
+      const left = pad;
+      const top = pad;
+      const mapW = w - pad * 2;
+      const mapH = h - pad * 2;
+      const bounds = computeBounds();
+      const scale = Math.min(mapW / (bounds.maxX - bounds.minX || 1), mapH / (bounds.maxY - bounds.minY || 1));
+      const cx = left - bounds.minX * scale;
+      const cy = top + mapH + bounds.minY * scale;
+      miniCtx.strokeStyle = 'rgba(255,255,255,0.08)';
+      miniCtx.strokeRect(left, top, mapW, mapH);
+      state.bodies.forEach((body, idx) => {
+        const trail = body.trail;
+        if (trail.length > 1) {
+          miniCtx.beginPath();
+          trail.forEach((point, i) => {
+            const x = cx + point.x * scale;
+            const y = cy - point.y * scale;
+            if (i === 0) miniCtx.moveTo(x, y);
+            else miniCtx.lineTo(x, y);
+          });
+          miniCtx.strokeStyle = hexToRgba(body.color, 0.35);
+          miniCtx.lineWidth = 1.5;
+          miniCtx.stroke();
+        }
+      });
+      state.bodies.forEach(body => {
+        const x = cx + body.x * scale;
+        const y = cy - body.y * scale;
+        miniCtx.fillStyle = body.color;
+        miniCtx.beginPath();
+        miniCtx.arc(x, y, 4, 0, Math.PI * 2);
+        miniCtx.fill();
+      });
+      const energy = calculateEnergy(state.bodies);
+      miniCtx.fillStyle = '#ffffff';
+      miniCtx.beginPath();
+      miniCtx.arc(cx + energy.comX * scale, cy - energy.comY * scale, 3, 0, Math.PI * 2);
+      miniCtx.fill();
+    }
+
+    function computeBounds() {
+      const allPoints = state.bodies.reduce((acc, body) => acc.concat(body.trail || []).concat({ x: body.x, y: body.y }), []);
+      const xs = allPoints.map(p => p.x);
+      const ys = allPoints.map(p => p.y);
+      const minX = Math.min(...xs, -4);
+      const maxX = Math.max(...xs, 4);
+      const minY = Math.min(...ys, -4);
+      const maxY = Math.max(...ys, 4);
+      return { minX, maxX, minY, maxY };
+    }
+
+    function drawPhasePlot() {
+      const w = phaseCanvas.width;
+      const h = phaseCanvas.height;
+      phaseCtx.clearRect(0, 0, w, h);
+      phaseCtx.fillStyle = '#090b12';
+      phaseCtx.fillRect(0, 0, w, h);
+      phaseCtx.strokeStyle = 'rgba(255,255,255,0.08)';
+      phaseCtx.lineWidth = 1;
+      phaseCtx.beginPath();
+      phaseCtx.moveTo(w / 2, 0);
+      phaseCtx.lineTo(w / 2, h);
+      phaseCtx.moveTo(0, h / 2);
+      phaseCtx.lineTo(w, h / 2);
+      phaseCtx.stroke();
+      const velo = state.phaseHistory.slice(-150);
+      if (velo.length > 1) {
+        phaseCtx.beginPath();
+        velo.forEach((point, idx) => {
+          const px = w / 2 + point.vx * 110;
+          const py = h / 2 - point.vy * 110;
+          if (idx === 0) phaseCtx.moveTo(px, py);
+          else phaseCtx.lineTo(px, py);
+        });
+        phaseCtx.strokeStyle = '#7c92ff';
+        phaseCtx.lineWidth = 2;
+        phaseCtx.stroke();
+      }
+      phaseCtx.fillStyle = '#d9dff5';
+      phaseCtx.fillText('vx', w - 28, h / 2 - 8);
+      phaseCtx.fillText('vy', w / 2 + 6, 14);
+    }
+
+    function drawEnergySpark() {
+      const w = energyCanvas.width;
+      const h = energyCanvas.height;
+      energyCtx.clearRect(0, 0, w, h);
+      energyCtx.fillStyle = '#090b12';
+      energyCtx.fillRect(0, 0, w, h);
+      const data = state.energyHistory.slice(-120);
+      if (data.length < 2) return;
+      const values = data.map(item => item.total);
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      const spread = Math.max(max - min, 0.0001);
+      energyCtx.strokeStyle = '#6af5d4';
+      energyCtx.lineWidth = 2;
+      energyCtx.beginPath();
+      values.forEach((value, i) => {
+        const x = (i / (values.length - 1)) * (w - 12) + 6;
+        const y = h - 6 - ((value - min) / spread) * (h - 12);
+        if (i === 0) energyCtx.moveTo(x, y);
+        else energyCtx.lineTo(x, y);
+      });
+      energyCtx.stroke();
+      const drift = Math.abs(values[values.length - 1] - values[0]) / Math.max(0.1, Math.abs(values[0]));
+      energyDriftLabel.textContent = (drift * 100).toFixed(2) + '%';
+    }
+
+    function hexToRgba(hex, alpha = 1) {
+      const bigint = parseInt(hex.slice(1), 16);
+      const r = (bigint >> 16) & 255;
+      const g = (bigint >> 8) & 255;
+      const b = bigint & 255;
+      return `rgba(${r},${g},${b},${alpha})`;
+    }
+
+    function computePredictions() {
+      if (!state.showPrediction) return;
+      state.predictionPoints = [[], [], []];
+      const world = JSON.parse(JSON.stringify(state.bodies));
+      const futureBodies = world.map(createBody);
+      const steps = 200;
+      const dt = 0.012 * state.speed;
+      for (let i = 0; i < steps; i++) {
+        const copy = futureBodies.map(b => ({ ...b }));
+        stepBodies(copy, dt, state.integrator);
+        copy.forEach((body, idx) => {
+          state.predictionPoints[idx].push({ x: body.x, y: body.y });
+          futureBodies[idx] = body;
+        });
+      }
+    }
+
+    function advanceSimulation(deltaTime) {
+      const dt = Math.min(0.12, 0.012 * state.speed);
+      if (!state.paused) {
+        stepBodies(state.bodies, dt, state.integrator);
+        if (state.butterfly) stepBodies(state.cloneBodies, dt, state.integrator);
+        state.bodies.forEach(body => recordTrail(body));
+        if (state.butterfly) state.cloneBodies.forEach(body => recordCloneTrail(body));
+        state.time += dt;
+      }
+      const energy = calculateEnergy(state.bodies);
+      state.energyHistory.push(energy);
+      if (state.energyHistory.length > 220) state.energyHistory.shift();
+      state.phaseHistory.push({ vx: state.bodies[0].vx, vy: state.bodies[0].vy });
+      if (state.phaseHistory.length > 220) state.phaseHistory.shift();
+      const divergence = state.bodies.reduce((sum, body, idx) => {
+        const clone = state.cloneBodies[idx];
+        const dx = body.x - clone.x;
+        const dy = body.y - clone.y;
+        return sum + Math.sqrt(dx * dx + dy * dy);
+      }, 0) / 3;
+      const ratio = Math.max(1e-6, divergence / state.initialDivergence);
+      const chaosScore = Math.min(1, Math.max(0, Math.log10(ratio) / 2));
+      state.chaosHistory.shift();
+      state.chaosHistory.push(chaosScore);
+      state.collision = checkCollision();
+      updateLiveData(energy, divergence, chaosScore);
+      computePredictions();
+    }
+
+    function checkCollision() {
+      const threshold = 0.26;
+      for (let i = 0; i < 3; i++) {
+        for (let j = i + 1; j < 3; j++) {
+          const dx = state.bodies[i].x - state.bodies[j].x;
+          const dy = state.bodies[i].y - state.bodies[j].y;
+          if (Math.hypot(dx, dy) < threshold) return true;
+        }
+      }
+      return false;
+    }
+
+    function updateLiveData(energy, divergence, chaosScore) {
+      liveFields.energy.textContent = formatNumber(energy.total);
+      liveFields.ke.textContent = formatNumber(energy.ke);
+      liveFields.pe.textContent = formatNumber(energy.pe);
+      liveFields.angMom.textContent = formatNumber(energy.angular);
+      liveFields.com.textContent = `${formatNumber(energy.comX)}, ${formatNumber(energy.comY)}`;
+      liveFields.simTime.textContent = formatNumber(state.time, 2) + 's';
+      liveFields.fps.textContent = `${state.fps.toFixed(0)} fps`;
+      liveFields.collision.textContent = state.collision ? 'ALERT' : 'OK';
+      liveFields.collision.parentElement.style.background = state.collision ? 'rgba(255,99,125,0.14)' : 'rgba(117,245,166,0.14)';
+      liveFields.collision.parentElement.style.borderColor = state.collision ? 'rgba(255,99,125,0.24)' : 'rgba(117,245,166,0.24)';
+      liveFields.selected.textContent = state.selectedBody === null ? 'None' : `Body ${state.selectedBody + 1}`;
+      if (state.advancedAnalytics) {
+        const energyDiff = Math.abs(energy.total - state.energyHistory[0]?.total || 0);
+        liveFields.extraAnalysis.textContent = `${formatNumber(energyDiff, 3)} drift`;
+      } else {
+        liveFields.extraAnalysis.textContent = 'Inactive';
+      }
+      chaosValueLabel.textContent = formatNumber(chaosScore * 10, 2);
+      updateChaosBars();
+    }
+
+    function updateChaosBars() {
+      chaosBars.innerHTML = '';
+      state.chaosHistory.forEach(value => {
+        const bar = document.createElement('div');
+        bar.className = 'chaos-bar';
+        bar.style.height = `${15 + value * 60}px`;
+        bar.style.background = `rgba(124,146,255,${0.3 + value * 0.6})`;
+        chaosBars.appendChild(bar);
+      });
+    }
+
+    function updateSelectedStats() {
+      if (state.selectedBody === null) {
+        selectedStats.innerHTML = '<div class="help-text">Click a body in the canvas to inspect its state.</div>';
+        return;
+      }
+      const body = state.bodies[state.selectedBody];
+      selectedStats.innerHTML = `
+        <div class="badge">Body ${state.selectedBody + 1}</div>
+        <p class="help-text">Mass: ${formatNumber(body.mass)} · Color: ${body.color}</p>
+        <div class="small-pair"><div>Position</div><div>${formatNumber(body.x)}, ${formatNumber(body.y)}</div></div>
+        <div class="small-pair" style="margin-top:6px;"><div>Velocity</div><div>${formatNumber(body.vx)}, ${formatNumber(body.vy)}</div></div>
+        <div class="small-pair" style="margin-top:6px;"><div>Kinetic</div><div>${formatNumber(0.5 * body.mass * (body.vx * body.vx + body.vy * body.vy))}</div></div>
+      `;
+    }
+
+    function resizeCanvases() {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
+      minimap.width = 340;
+      minimap.height = 130;
+      phaseCanvas.width = 340;
+      phaseCanvas.height = 130;
+      energyCanvas.width = 340;
+      energyCanvas.height = 130;
+    }
+
+    function animate() {
+      const now = performance.now();
+      const dt = Math.min(40, now - state.lastFrame);
+      state.lastFrame = now;
+      state.fps = 1000 / dt;
+      advanceSimulation(dt / 1000);
+      drawScene();
+      drawPhasePlot();
+      drawEnergySpark();
+      state.renderTime = now;
+      requestAnimationFrame(animate);
+    }
+
+    function attachUI() {
+      document.querySelectorAll('.presetBtn').forEach(button => {
+        button.addEventListener('click', () => {
+          loadPreset(button.dataset.preset);
+        });
+      });
+      document.querySelectorAll('.overlayPresetBtn').forEach(button => {
+        button.addEventListener('click', () => {
+          loadPreset(button.dataset.preset);
+        });
+      });
+      document.getElementById('launchBtn').addEventListener('click', () => {
+        hideStartupOverlay();
+      });
+      inputs.playPauseBtn.addEventListener('click', () => {
+        state.paused = !state.paused;
+        inputs.playPauseBtn.textContent = state.paused ? 'Play' : 'Pause';
+      });
+      inputs.resetBtn.addEventListener('click', () => {
+        resetToCurrentPreset();
+      });
+      inputs.resetPresetBtn.addEventListener('click', () => {
+        resetToCurrentPreset();
+      });
+      inputs.resetPhysicsBtn.addEventListener('click', () => {
+        resetPhysics();
+      });
+      inputs.resetViewBtn.addEventListener('click', () => {
+        state.viewX = 0;
+        state.viewY = 0;
+        state.zoom = 58;
+      });
+      inputs.fitViewBtn.addEventListener('click', () => {
+        const bounds = computeBounds();
+        const width = canvas.clientWidth;
+        const height = canvas.clientHeight;
+        const padding = 50;
+        const scaleX = (width - padding) / (bounds.maxX - bounds.minX || 1);
+        const scaleY = (height - padding) / (bounds.maxY - bounds.minY || 1);
+        state.zoom = Math.min(scaleX, scaleY);
+        state.viewX = (bounds.minX + bounds.maxX) / 2;
+        state.viewY = (bounds.minY + bounds.maxY) / 2;
+      });
+      inputs.stepBtn.addEventListener('click', () => {
+        const prev = state.paused;
+        state.paused = true;
+        advanceSimulation(1 / 60);
+        state.paused = prev;
+      });
+      inputs.speedSlider.addEventListener('input', ev => {
+        state.speed = parseFloat(ev.target.value);
+        inputs.speedValue.textContent = state.speed.toFixed(2) + 'x';
+        computePredictions();
+      });
+      inputs.trailToggle.addEventListener('change', ev => { state.showTrails = ev.target.checked; });
+      inputs.forceToggle.addEventListener('change', ev => { state.showForces = ev.target.checked; });
+      inputs.comToggle.addEventListener('change', ev => { state.showCOM = ev.target.checked; });
+      inputs.butterflyToggle.addEventListener('change', ev => { state.butterfly = ev.target.checked; if (state.butterfly) state.cloneBodies = cloneBodies(state.bodies, state.initialDivergence); });
+      inputs.predictionToggle.addEventListener('change', ev => { state.showPrediction = ev.target.checked; computePredictions(); });
+      inputs.gSlider.addEventListener('input', ev => { state.G = parseFloat(ev.target.value); inputs.gValue.textContent = state.G.toFixed(2); });
+      inputs.epsilonSlider.addEventListener('input', ev => { state.epsilon = parseFloat(ev.target.value); inputs.epsValue.textContent = state.epsilon.toFixed(3); });
+      inputs.integratorSelect.addEventListener('change', ev => { state.integrator = ev.target.value; computePredictions(); });
+      inputs.trailLenSlider.addEventListener('input', ev => { state.trailLength = parseInt(ev.target.value, 10); inputs.trailLenValue.textContent = state.trailLength; });
+      inputs.screenshotBtn.addEventListener('click', () => {
+        const link = document.createElement('a');
+        link.download = 'three-body-snapshot.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      });
+
+      inputs.savePresetBtn.addEventListener('click', savePreset);
+      inputs.loadPresetBtn.addEventListener('click', loadPresetByName);
+      inputs.saveScenarioBtn.addEventListener('click', savePremiumScenario);
+      inputs.loadScenarioBtn.addEventListener('click', loadPremiumScenario);
+      inputs.exportOrbitJsonBtn.addEventListener('click', exportOrbitJsonData);
+      inputs.exportOrbitCsvBtn.addEventListener('click', exportOrbitCsvData);
+      inputs.toggleAnalyticsBtn.addEventListener('click', () => {
+        state.advancedAnalytics = !state.advancedAnalytics;
+        inputs.toggleAnalyticsBtn.textContent = state.advancedAnalytics ? 'Disable advanced analytics' : 'Enable advanced analytics';
+      });
+
+      window.addEventListener('resize', resizeCanvases);
+      canvas.addEventListener('mousedown', startPan);
+      canvas.addEventListener('touchstart', startPan, { passive: false });
+      canvas.addEventListener('mousemove', ev => {
+        const point = getEventPoint(ev);
+        const world = screenToWorld(point);
+        const overBody = state.bodies.some(body => {
+          const dx = world.x - body.x;
+          const dy = world.y - body.y;
+          return Math.hypot(dx, dy) <= Math.max(0.16, Math.sqrt(body.mass) * 0.18);
+        });
+        canvas.style.cursor = overBody ? 'pointer' : 'grab';
+      });
+      window.addEventListener('mousemove', movePan);
+      window.addEventListener('touchmove', movePan, { passive: false });
+      window.addEventListener('mouseup', endPan);
+      window.addEventListener('touchend', endPan);
+      canvas.addEventListener('wheel', ev => {
+        ev.preventDefault();
+        const delta = Math.sign(ev.deltaY) * 0.08;
+        state.zoom = Math.min(160, Math.max(18, state.zoom * (1 - delta)));
+      }, { passive: false });
+      canvas.addEventListener('click', canvasClick);
+      window.addEventListener('keydown', ev => {
+        if (ev.target.tagName === 'INPUT' || ev.target.tagName === 'TEXTAREA') return;
+        if (ev.key === ' ') { ev.preventDefault(); inputs.playPauseBtn.click(); }
+        if (ev.key === 'r' || ev.key === 'R') inputs.resetBtn.click();
+        if (ev.key === 'f' || ev.key === 'F') { inputs.forceToggle.checked = !inputs.forceToggle.checked; state.showForces = inputs.forceToggle.checked; }
+        if (ev.key === 't' || ev.key === 'T') { inputs.trailToggle.checked = !inputs.trailToggle.checked; state.showTrails = inputs.trailToggle.checked; }
+        if (ev.key === '+' || ev.key === '=') {
+          state.speed = Math.min(10, state.speed + 0.2);
+          inputs.speedSlider.value = state.speed;
+          inputs.speedValue.textContent = state.speed.toFixed(2) + 'x';
+        }
+        if (ev.key === '-') {
+          state.speed = Math.max(0.1, state.speed - 0.2);
+          inputs.speedSlider.value = state.speed;
+          inputs.speedValue.textContent = state.speed.toFixed(2) + 'x';
+        }
+      });
+    }
+
+    let panState = { active: false, startX: 0, startY: 0, originX: 0, originY: 0 };
+    function startPan(event) {
+      if (event.target !== canvas) return;
+      event.preventDefault();
+      const point = getEventPoint(event);
+      panState.active = true;
+      panState.startX = point.x;
+      panState.startY = point.y;
+      panState.originX = state.viewX;
+      panState.originY = state.viewY;
+    }
+
+    function movePan(event) {
+      if (!panState.active) return;
+      event.preventDefault();
+      const point = getEventPoint(event);
+      const dx = (panState.startX - point.x) / state.zoom;
+      const dy = (point.y - panState.startY) / state.zoom;
+      state.viewX = panState.originX + dx;
+      state.viewY = panState.originY + dy;
+    }
+
+    function endPan() {
+      panState.active = false;
+    }
+
+    function getEventPoint(event) {
+      const rect = canvas.getBoundingClientRect();
+      if (event.touches) {
+        return { x: event.touches[0].clientX - rect.left, y: event.touches[0].clientY - rect.top };
+      }
+      return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    }
+
+    function screenToWorld(point) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: (point.x - rect.width / 2) / state.zoom + state.viewX,
+        y: (rect.height / 2 - point.y) / state.zoom + state.viewY
+      };
+    }
+
+    function canvasClick(event) {
+      const point = getEventPoint(event);
+      const { x, y } = screenToWorld(point);
+      let picked = null;
+      state.bodies.forEach((body, i) => {
+        const dx = x - body.x;
+        const dy = y - body.y;
+        const radius = Math.max(0.16, Math.sqrt(body.mass) * 0.18);
+        if (Math.hypot(dx, dy) <= radius) picked = i;
+      });
+      state.selectedBody = picked;
+      updateSelectedStats();
+    }
+
+    function initChaosBars() {
+      chaosBars.innerHTML = '';
+      state.chaosHistory.forEach(() => {
+        const bar = document.createElement('div');
+        bar.className = 'chaos-bar';
+        chaosBars.appendChild(bar);
+      });
+    }
+
+    async function start() {
+      resizeCanvases();
+      initChaosBars();
+      await fetchSavedPresets();
+      loadPreset(state.currentPreset);
+      attachUI();
+      showStartupOverlay();
+      animate();
+    }
+
+    start();
+  </script>
+</body>
+</html>
